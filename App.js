@@ -1,20 +1,41 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import React, { useState } from 'react';
+import { NavigationContainer } from '@react-navigation/native';
+import { createStackNavigator } from '@react-navigation/stack';
+const cors = require('cors');
+import LoginScreen from './screens/LoginScreen';
+import PrincipalScreen from './screens/PrincipalScreen';
 
-export default function App() {
+const Stack = createStackNavigator();
+
+
+const App = () => {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  const handleLogin = () => {
+    // Lógica para el inicio de sesión
+    setIsLoggedIn(true);
+  };
+
+  const handleLogout = () => {
+    // Lógica para el cierre de sesión
+    setIsLoggedIn(false);
+  };
+
   return (
-    <View style={styles.container}>
-      <Text>Open up App.js to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
+    <NavigationContainer>
+      <Stack.Navigator>
+        {isLoggedIn ? (
+          <Stack.Screen name="Principal">
+            {(props) => <PrincipalScreen {...props} handleLogout={handleLogout} />}
+          </Stack.Screen>
+        ) : (
+          <Stack.Screen name="Login">
+            {(props) => <LoginScreen {...props} handleLogin={handleLogin} />}
+          </Stack.Screen>
+        )}
+      </Stack.Navigator>
+    </NavigationContainer>
   );
-}
+};
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
+export default App;
