@@ -38,7 +38,6 @@ const InicioScreen = () => {
           // Realizar la navegación al manejar el error
         }
       } else {
-        // No se encontró el token, realizar la navegación a la vista de inicio de sesión
         setLoading(false);
         navigation.navigate('Login', { handleLogout });
       }
@@ -47,14 +46,6 @@ const InicioScreen = () => {
     const delay = async (ms) => {
       return new Promise((resolve) => setTimeout(resolve, ms));
     };
-
-    const startApp = async () => {
-      await delay(3000); // Esperar 3 segundos
-      checkLogin();
-    };
-
-    startApp();
-  }, []);
 
   return (
     <View style={styles.container}>
@@ -71,23 +62,10 @@ const InicioScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'skyblue',
-    alignItems: 'center',
     justifyContent: 'center',
-  },
-  spinnerContainer: {
-    flex: 1,
     alignItems: 'center',
-    justifyContent: 'flex-end',
-    marginBottom: '33.33%',
   },
-  imageContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-   // marginTop: '15%',
-  },
-  image: {
+  logo: {
     width: 300,
     height: 300,
   },
