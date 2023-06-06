@@ -1,41 +1,41 @@
 import React, { useState } from 'react';
 import { View, TextInput, Button, StyleSheet } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { NativeBaseProvider, Container } from 'native-base';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import configs from '../configs';
+import axios from 'axios';
 
-const LoginScreen = ({ handleLogin }) => {
+const LoginScreen = () => {
+  const navigation = useNavigation();
   const [userName, setUserName] = useState('');
   const [password, setPassword] = useState('');
 
   const handleLoginPress = async () => {
     try {
-      const response = await fetch('http://192.168.20.9:3000/auth/', {
+
+        const response = await fetch(configs.url+'/auth', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ userName, password }),
+        body: JSON.stringify({ userName, password })
       });
-      console.log(response.ok+"");
-      if (response.ok) {
+
+      if (response) {
         const data = await response.json();
         const token = data.token;
-
-        // Almacenar el token en las cookies
-        // ...
-         await AsyncStorage.setItem('token',token);
-        // Ejecutar la función handleLogin con el token como argumento
-        handleLogin(token);
-        
+        await AsyncStorage.setItem('token', token);
+        navigation.navigate('Principal');
       } else {
-        // Manejar el caso en que la solicitud no sea exitosa
         console.log('Error de inicio de sesión');
       }
     } catch (error) {
-      console.log(error);
+      // console.log(error);
+      console.log({ error: error});
+      throw error
     }
   };
-
-
 
   return (
     <View style={styles.container}>

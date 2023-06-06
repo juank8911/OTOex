@@ -1,0 +1,368 @@
+App.js = //// 
+
+
+
+import React, { useEffect, useRef } from 'react';
+import { NavigationContainer } from '@react-navigation/native';
+import { createStackNavigator } from '@react-navigation/stack';
+import { NativeBaseProvider } from 'native-base';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import configs from './configs';
+
+import InicioScreen from './screens/InicioScreen';
+import LoginScreen from './screens/LoginScreen';
+import PrincipalScreen from './screens/PrincipalScreen';
+
+const Stack = createStackNavigator();
+
+const App = () => {
+  const navigationRef = useRef();
+
+  const handleLogin = async (token) => {
+    try {
+      console.log('Token de inicio de sesión:', token);
+      await AsyncStorage.setItem('token', token);
+      navigationRef.current.navigate('Principal');
+    } catch (error) {
+      console.error('Error al guardar el token:', error);
+    }
+  };
+
+  const handleLogout = async()=>{{
+    try {
+      await AsyncStorage.removeItem('token');
+      navigationRef.current.navigate('Login');
+    } catch (error) {
+      console.error('Error al borrar el token:', error);
+    }
+  }}
+
+  useEffect(() => {
+    const checkLogin = async () => {
+      const token = await AsyncStorage.getItem('token');
+      console.log(token);
+// validar si el token existe si existe se valudia tiempo de expiracion de token 
+      if (token) {
+        await delay(3000);
+        try {
+          const response = await fetch(configs.url+'/auth/', {
+            method:'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`
+            }
+          });
+          console.log('respuesta ----------------');
+          console.log(response.data);
+
+          if (response.data.isLoggedIn) {
+            navigationRef.current.navigate('Principal');
+          } else {
+            navigationRef.current.navigate('Login');
+          }
+        } catch (error) {
+          console.log('Error al verificar el login:', error);
+          navigationRef.current.navigate('Login');
+        }
+      } else {
+        navigationRef.current.navigate('Login');
+      }
+    };
+
+    checkLogin();
+  }, []);
+
+  const delay = (ms) => {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  };
+
+  return (
+    <NativeBaseProvider>
+      <NavigationContainer ref={navigationRef}>
+        <Stack.Navigator>
+          <Stack.Screen name="Inicio" component={InicioScreen} />
+          <Stack.Screen name="Login">
+            {(props) => <LoginScreen {...props} handleLogin={handleLogin} />}
+          </Stack.Screen>
+        <Stack.Screen name='Principal'> {(props)=><PrincipalScreen {...props} handleLogout={handleLogout}/>}  </Stack.Screen>
+          {/* <Stack.Screen name="Principal" component={PrincipalScreen} /> */}
+        </Stack.Navigator>
+      </NavigationContainer>
+    </NativeBaseProvider>
+  );
+};
+
+export default App;
+
+
+
+ ////-----------------------------------------------------------------------------
+///--------------------------------------------------------------------
+ inicioScreen: import React, { useEffect, useState, useRef } from 'react';
+import { View, StyleSheet, Image, ActivityIndicator } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { NativeBaseProvider, Container } from 'native-base';
+import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import configs from '../configs';
+
+
+
+
+const InicioScreen = () => {
+  const navigationRef = useRef();
+  const navigation = useNavigation();
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    try{
+    const checkLogin = async () => {
+      const token = await AsyncStorage.getItem('token');
+      console.log(token);
+
+      if (token) {
+        await delay(3000);
+        try {
+
+           await axios.get(configs.url+'/auth/', {
+            method: 'GET',
+            headers: {
+              'content-type': 'application/json',
+              authorization: `Bearer ${token}`
+            }
+          })
+          .then(response=>{
+            
+            console.log('respuesta -----4-----------');
+            console.log(response.data);
+          if (response.data.isLoggedIn) {            
+            setLoading(false);
+            console.log('en el if de login')
+            // navigation.navigate('Principal');
+            navigationRef.current.navigate('Login');
+          } else {
+            console.log('en el else de login')
+            setLoading(false);
+            // navigation.navigate('Login');
+            navigationRef.current.navigate('Login');
+          }
+          }).catch(err =>{
+            throw err;
+          })
+          console.log('respuesta -----5-----------');
+
+        } catch (error) {
+          console.log('Error al verificar el login inicio:', error);
+          setLoading(false);
+          navigation.navigate('Login');
+        }
+      } else {
+        setLoading(false);
+        navigation.navigate('Login');
+      }
+    };
+    checkLogin();
+  }
+  catch(err){
+    console.log(err);
+  }
+  });
+
+  const delay = (ms) => {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  };
+
+  return (
+    <NativeBaseProvider>
+      <Container style={styles.container}>
+        <Image source={require('../assets/oto-1.png')} style={styles.logo} />
+        <ActivityIndicator size="large" color="red" animating={loading} />
+      </Container>
+    </NativeBaseProvider>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  logo: {
+    width: 300,
+    height: 300
+  },
+});
+
+export default InicioScreen;
+
+
+
+
+ /---------------------------------------------------------------------------------------------
+ LoginScreen = ////----------------------------------------------------------------------------
+import React, { useState } from 'react';
+import { View, TextInput, Button, StyleSheet } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { NativeBaseProvider, Container } from 'native-base';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import configs from '../configs';
+import axios from 'axios';
+
+const LoginScreen = () => {
+  const navigation = useNavigation();
+  const [userName, setUserName] = useState('');
+  const [password, setPassword] = useState('');
+
+  const handleLoginPress = async () => {
+    try {
+
+        const response = await fetch(configs.url+'/auth/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userName, password })
+      });
+
+      if (response) {
+        const data = await response.json();
+        const token = data.token;
+        await AsyncStorage.setItem('token', token);
+        navigation.navigate('Principal');
+      } else {
+        console.log('Error de inicio de sesión');
+      }
+    } catch (error) {
+      // console.log(error);
+      console.log({ error: error});
+      throw error
+    }
+  };
+
+  return (
+    <View style={styles.container}>
+      <TextInput
+        style={styles.input}
+        placeholder="Nombre de usuario"
+        value={userName}
+        onChangeText={setUserName}
+      />
+      <TextInput
+        style={styles.input}
+        placeholder="Contraseña"
+        secureTextEntry
+        value={password}
+        onChangeText={setPassword}
+      />
+      <Button title="Iniciar sesión" onPress={handleLoginPress} />
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: 'skyblue',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  input: {
+    width: '80%',
+    height: 40,
+    backgroundColor: 'lightgray',
+    marginBottom: 10,
+    paddingHorizontal: 10,
+  },
+});
+
+export default LoginScreen;
+
+
+/////--------------------------------------------------------------------
+
+PrincipalScreen=//// -------------------------------------------------------------------
+
+import React from 'react';
+import { Container, Header, Left, Body, Right, Content, Button, Text } from 'native-base';
+import axios from 'axios';
+import { Icon } from 'react-native-vector-icons';
+import { Image, StyleSheet } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const PrincipalScreen = () => {
+  console.log('PrincipalScreen 1');
+  const navigation = useNavigation();
+  console.log('PrincipalScreen 2');
+  const handleLogout = async () => {
+    console.log('PrincipalScreen 3');
+    try {
+      // Eliminar el token de AsyncStorage
+      await AsyncStorage.removeItem('token');
+      // Navegar a la pantalla de inicio
+      navigation.navigate('Inicio');
+    } catch (error) {
+      console.error('Error al cerrar sesión:', error);
+    }
+  };
+  
+  return (
+    <Container>
+      <Header>
+        <Left>
+          <Image source={require('../assets/user.png')} style={styles.avatar} />
+        </Left>
+        <Body>
+          <Text style={styles.username}>Nombre de usuario</Text>
+        </Body>
+        <Right>
+          <Button transparent>
+            <Icon name='menu' />
+          </Button>
+        </Right>
+      </Header>
+      <Content>
+        <Text style={styles.option}>
+          <Icon name='paw' style={styles.icon} /> 1 - Mascotas
+        </Text>
+        <Text style={styles.option}>
+          <Icon name='bell' style={styles.icon} /> 2 - Alertas
+        </Text>
+        <Text style={styles.option}>
+          <Icon name='megaphone' style={styles.icon} /> 3 - Promociones
+        </Text>
+        <Text style={styles.option}>
+          <Icon name='cog' style={styles.icon} /> 4 - Servicios
+        </Text>
+        <Text style={styles.option}>
+          <Icon name='ellipsis-h' style={styles.icon} /> 5 - Por definir
+        </Text>
+      </Content>
+      {/* <Button block onPress={handleLogout}>
+        <Text>Cerrar sesión</Text>
+      </Button> */}
+    </Container>
+  );
+};
+
+const styles = StyleSheet.create({
+  avatar: {
+    width: 24,
+    height: 24,
+  },
+  username: {
+    fontWeight: 'bold',
+  },
+  option: {
+    marginBottom: 8,
+  },
+  icon: {
+    marginRight: 8,
+  },
+});
+
+export default PrincipalScreen;
+
+
+////---------------------------------------------------------------------
