@@ -14,16 +14,17 @@ const Stack = createNativeStackNavigator();
 
 const App = () => {
   const navigationRef = useRef();
+  console.log('Token de inicio de sesión:');
 
-  const handleLogin = async (token) => {
-    try {
-      console.log('Token de inicio de sesión:', token);
-      await AsyncStorage.setItem('token', token);
-      navigationRef.current.navigate('Principal');
-    } catch (error) {
-      console.error('Error al guardar el token:', error);
-    }
-  };
+  // const handleLogin = async (token) => {
+  //   try {
+  //     console.log('Token de inicio de sesión:', token);
+  //     await AsyncStorage.setItem('token', token);
+  //     navigationRef.current.navigate('Principal');
+  //   } catch (error) {
+  //     console.error('Error al guardar el token:', error);
+  //   }
+  // };
 
   const handleLogout = async () => {
     try {
@@ -58,11 +59,11 @@ const App = () => {
           
           //     response = response.json();
           //     console.log(response);
-          // if (response.data.isLoggedIn) {
-          //   navigationRef.current.navigate('Principal');
-          // } else {
-          //   navigationRef.current.navigate('Login');
-          // }
+          if (response.data.isLoggedIn) {
+            navigationRef.current.navigate('Principal');
+          } else {
+            navigationRef.current.navigate('Login');
+          }
         } catch (error) {
           console.log('Error al verificar el login:', error);
           navigationRef.current.navigate('Login');
@@ -85,7 +86,7 @@ const App = () => {
         <Stack.Navigator>
           <Stack.Screen name="Inicio" component={InicioScreen} />
           <Stack.Screen name="Login">
-            {(props) => <LoginScreen {...props} handleLogin={handleLogin} />}
+            {(props) => <LoginScreen {...props}  />}
           </Stack.Screen>
           <Stack.Screen name="Principal">
             {(props) => <PrincipalScreen {...props} handleLogout={handleLogout} />}

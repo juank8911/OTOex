@@ -117,14 +117,14 @@ const InicioScreen = () => {
                 authorization: `Bearer ${token}`
               }
             });
-               console.log('inicio Screen');
-               console.log(response.data.isloggedIn);
-               console.log(response.data.pruabe);
-               console.log(response.data.usue);
+              //  console.log('inicio Screen');
+              //  console.log(response.data.isloggedIn);
+              //  console.log(response.data.pruabe);
+              //  console.log(response.data.usue);
                    if (response.data.isloggedIn) {
-                    console.log('el usuario si existe')
+                    // console.log('el usuario si existe')
                   setLoading(false);
-                  console.log('redireccionando a la vista principal')
+                  // console.log('redireccionando a la vista principal')
                   navigation.navigate('Principal');
                 } else {
                   setLoading(false);
