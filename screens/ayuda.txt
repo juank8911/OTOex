@@ -1,0 +1,620 @@
+app.js
+--------------------------------------------------------------------------------------------------------------------------------
+import React, { useEffect, useRef, useState } from 'react';
+import { NavigationContainer } from '@react-navigation/native';
+import { createStackNavigator } from '@react-navigation/stack';
+import { createDrawerNavigator } from '@react-navigation/drawer';
+import { DrawerContentScrollView } from '@react-navigation/drawer';
+import {
+  NativeBaseProvider,
+  Box,
+  Text,
+  IconButton,
+  VStack,
+  Pressable,
+  HStack,
+  Icon,
+  Divider,
+  Center,
+  Avatar,
+} from 'native-base';
+import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { AppState } from 'react-native';
+import InicioScreen from './screens/InicioScreen';
+import LoginScreen from './screens/LoginScreen';
+import PrincipalScreen from './screens/PrincipalScreen';
+import RegisterScreen from './screens/RegisterScreen';
+
+import configs from './configs';
+import MenuComponent from './components/MenuComponent';
+
+const Stack = createStackNavigator();
+const Drawer = createDrawerNavigator();
+
+const App = () => {
+  const navigationRef = useRef();
+  const [loggedIn, setLoggedIn] = useState(false);
+  const [usuario, setUsuario] = useState();
+  const [isLoading, setIsLoading] = useState(true);
+  const appStateSubscription = useRef();
+
+  const handleLogout = async (navigation) => {
+    try {
+      await AsyncStorage.removeItem('token');
+      navigation.navigate('Login');
+    } catch (error) {
+      console.error('Error al cerrar sesión:', error);
+    }
+  };
+
+  useEffect(() => {
+    const checkLogin = async () => {
+      const token = await AsyncStorage.getItem('token');
+
+      if (token) {
+        try {
+          const response = await fetch(configs.url + '/auth', {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+          });
+          const responseData = await response.json();
+
+          if (responseData.isloggedIn) {
+            const tk = token;
+
+            await fetch(`http://192.168.20.3:3000/usuario/tok/${tk}`, {
+              method: 'GET',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+              },
+            })
+              .then((response) => response.json())
+              .then((data) => {
+                console.log('RESPONSE');
+                console.log(data);
+                console.log('-----------------');
+                const usuario = data;
+                setUsuario(usuario);
+              })
+              .catch((err) => {
+                console.log('error en checking usuario');
+                console.log(err);
+              });
+            setLoggedIn(true);
+          } else {
+            navigationRef.current?.navigate('Login');
+          }
+        } catch (error) {
+          console.log('Error al verificar el login:', error);
+          navigationRef.current?.navigate('Login');
+        }
+      } else {
+        navigationRef.current?.navigate('Login');
+      }
+
+      setIsLoading(false);
+    };
+
+    const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+    const loadApp = async () => {
+      await delay(3000);
+      checkLogin();
+    };
+
+    loadApp();
+
+    appStateSubscription.current = AppState.addEventListener('change', checkLogin);
+
+    return () => {
+      appStateSubscription.current && appStateSubscription.current.remove();
+    };
+  }, []);
+
+  return (
+    <NativeBaseProvider>
+      <NavigationContainer ref={navigationRef}>
+        {isLoading ? (
+          <InicioScreen />
+        ) : (
+          
+          <Stack.Navigator>
+            <Stack.Screen
+              name="Drawer"
+              options={{ headerShown: false }}
+            >
+              {(props) => (
+                <Drawer.Navigator
+                  initialRouteName={loggedIn ? 'Principal' : 'Login'}
+                  drawerContent={(props) => (
+                    <MenuComponent
+                      {...props}
+                      handleLogout={handleLogout}
+                      usuario={usuario}
+                    />
+                  )}
+                >
+                  <Drawer.Screen
+                    name="Principal"
+                    component={PrincipalScreen}
+                    options={{ headerShown: true }}
+                  />
+                  <Drawer.Screen
+                    name="Login"
+                    component={LoginScreen}
+                    options={{ headerShown: false }}
+                  />
+                  <Drawer.Screen
+                    name="Registro"
+                    component={RegisterScreen}
+                    options={{ headerShown: true }}
+                  />
+                  <Drawer.Screen
+                    name="Favorites"
+                    component={RegisterScreen}
+                    options={{ headerShown: true }}
+                  />
+                  <Drawer.Screen
+                    name="Archive"
+                    component={RegisterScreen}
+                    options={{ headerShown: true }}
+                  />
+                  <Drawer.Screen
+                    name="Trash"
+                    component={RegisterScreen}
+                    options={{ headerShown: true }}
+                  />
+                  <Drawer.Screen
+                    name="Spam"
+                    component={PrincipalScreen}
+                    options={{ headerShown: true }}
+                  />
+                </Drawer.Navigator>
+              )}
+            </Stack.Screen>
+          </Stack.Navigator>
+        )}
+      </NavigationContainer>
+    </NativeBaseProvider>
+  );
+};
+
+export default App;
+--------------------------------------------------------------------------------------------------------------------------------
+InicioScreen.js
+-------------------------------------------------------------------------------------------------------
+import React, { useEffect, useState } from 'react';
+import { View, StyleSheet, Image, ActivityIndicator } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { NativeBaseProvider, Container } from 'native-base';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import axios from 'axios';
+import configs from '../configs';
+
+const InicioScreen = () => {
+  const navigation = useNavigation();
+  console.log('inicio screen');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const checkLogin = async () => {
+      try {
+        const token = await AsyncStorage.getItem('token');
+        console.log(token);
+
+        if (token) {
+          await delay(3000);
+          try {
+            const response = await axios.get(configs.url + '/auth', {
+              headers: {
+                'content-type': 'application/json',
+                authorization: `Bearer ${token}`
+              }
+            });
+            console.log('response de inicio:', response);
+            if (response.data) {
+              setLoading(false);
+              navigation.navigate('Principal');
+            } else {
+              setLoading(false);
+              navigation.navigate('Login');
+            }
+          } catch (error) {
+            console.log('Error al verificar el login inicio:', error);
+            setLoading(false);
+            navigation.navigate('Login');
+          }
+        } else {
+          setLoading(false);
+          navigation.navigate('Login');
+        }
+      } catch (err) {
+        console.log('check login: ' + err);
+        navigation.navigate('Login');
+      }
+    };
+
+    checkLogin();
+  }, []);
+
+  const delay = (ms) => {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  };
+
+  return (
+    <NativeBaseProvider>
+      <View style={styles.container}>
+        <Container>
+          <Image source={require('../assets/oto-1.png')} style={styles.logo} />
+          <ActivityIndicator size="large" color="red" animating={loading} />
+        </Container>
+      </View>
+    </NativeBaseProvider>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+  },
+  logo: {
+    width: 300,
+    height: 300
+  },
+});
+
+export default InicioScreen;
+
+------------------------------------------------------------------------------------------------------------------
+LoginScreen.js
+
+------------------------------------------------------------------------------------------------------------------
+import React, { useState, useRef, useEffect } from 'react';
+import { View, TextInput, TouchableOpacity, Text, StyleSheet } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { NativeBaseProvider, Container, HStack, IconButton } from 'native-base';
+import { MaterialIcons, AntDesign } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import configs from '../configs';
+import axios from 'axios';
+
+const LoginScreen = () => {
+  const [userName, setUserName] = useState('');
+  const [password, setPassword] = useState('');
+
+  useEffect(() => {
+    console.log('login screen');
+  }, []);
+
+  const navigation = useNavigation();
+
+  const handleLoginPress = async () => {
+    try {
+      const response = await axios.post(configs.url + '/auth', { userName, password });
+  
+      if (response.data.isLoggedIn) {
+        console.log('response de login');
+        console.log(response.data);
+        const token = response.data.token;
+        AsyncStorage.setItem('token', token);
+        navigation.navigate('Principal');
+      } else {
+        console.log('Error de inicio de sesión');
+      }
+    } catch (error) {
+      console.log('Error en el inicio de sesión:', error);
+    }
+  };
+
+  const handleRegisterPress = () => {
+    navigation.navigate('Register');
+  };
+
+  const handleFacebookLogin = () => {
+    // Handle Facebook login logic here
+  };
+
+  const handleGoogleLogin = () => {
+    // Handle Google login logic here
+  };
+
+  return (
+    <View style={styles.container}>
+      <TextInput
+        style={styles.input}
+        placeholder="Nombre de usuario"
+        value={userName}
+        onChangeText={setUserName}
+        underlineColorAndroid="black" // Agregamos underline a los inputs
+      />
+      <TextInput
+        style={styles.input}
+        placeholder="Contraseña"
+        secureTextEntry
+        value={password}
+        onChangeText={setPassword}
+        underlineColorAndroid="black" // Agregamos underline a los inputs
+      />
+      <View style={styles.buttonContainer}>
+        <TouchableOpacity style={[styles.button, styles.btns]} onPress={handleLoginPress}>
+          <Text style={styles.buttonText}>Inicio Sesion</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.button, styles.btns]} onPress={handleRegisterPress}>
+          <Text style={styles.buttonText}>Registro</Text>
+        </TouchableOpacity>
+      </View>
+      <View style={styles.socialButtonsContainer}>
+        <IconButton
+          icon={<MaterialIcons name="facebook" size={24} color="white" />}
+          style={[styles.socialButton, styles.facebookButton]}
+          onPress={handleFacebookLogin}
+        />
+        <IconButton
+          icon={<AntDesign name="googleplus" size={24} color="black" />}
+          style={[styles.socialButton, styles.googleButton]}
+          onPress={handleGoogleLogin}
+        />
+      </View>
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: 'skyblue',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  input: {
+    width: '80%',
+    height: 40,
+    backgroundColor: 'skyblue',
+    marginBottom: 10,
+    paddingHorizontal: 10,
+  },
+  buttonContainer: {
+    flexDirection: 'column',
+    marginVertical: 10, // Espacio vertical entre los botones Login y Register
+  },
+  button: {
+    backgroundColor: 'gray',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    marginVertical: 10,
+    borderRadius: 5,
+  },
+  buttonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  socialButtonsContainer: {
+    flexDirection: 'row',
+    marginTop: 10,
+  },
+  socialButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  btns: {
+    margin: 10,
+    backgroundColor: '#1877F2',
+  },
+  facebookButton: {
+    backgroundColor: '#1877F2',
+  },
+  googleButton: {
+    backgroundColor: '#DB4437',
+  },
+});
+
+export default LoginScreen;
+
+------------------------------------------------------------------------------------------------------------------
+RegisterScreen.js
+------------------------------------------------------------------------------------------------------------------
+import React, { useState } from 'react';
+import { View, StyleSheet } from 'react-native';
+import { Input, Button, Stack } from 'native-base';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import axios from 'axios';
+import configs from '../configs';
+
+const RegisterScreen = () => {
+  const [nombres, setNombres] = useState('');
+  const [apellidos, setApellidos] = useState('');
+  const [userName, setUserName] = useState('');
+  const [tel, setTel] = useState('');
+  const [fechaNacimiento, setFechaNacimiento] = useState(new Date());
+  const [genero, setGenero] = useState('');
+  const [correo, setCorreo] = useState('');
+  const [password, setPassword] = useState('');
+  const [showDatePicker, setShowDatePicker] = useState(false);
+
+  const handleRegisterPress = async () => {
+    try {
+      const newUser = {
+        nombres,
+        apellidos,
+        userName,
+        tel,
+        fechaNacimiento,
+        genero,
+        correo,
+        password
+      };
+
+      const response = await axios.post(`${configs.url}/register`, newUser);
+
+      console.log('Registro exitoso:', response.data);
+    } catch (error) {
+      console.log('Error en el registro:', error);
+    }
+  };
+
+  const handleDateChange = (event, selectedDate) => {
+    const currentDate = selectedDate || fechaNacimiento;
+    setShowDatePicker(false);
+    setFechaNacimiento(currentDate);
+  };
+
+  return (
+    <View style={styles.container}>
+      <Stack space={4} w="75%" maxW="300px" mx="auto">
+        <Input
+          variant="underlined"
+          placeholder="Nombres"
+          borderColor={"black"}
+          placeholderTextColor="black"
+          value={nombres}
+          onChangeText={setNombres}
+          style={styles.input}
+          _focus={{ borderColor: 'black' }}
+          _hover={{ borderColor: 'black' }}
+          color="black"
+        />
+        <Input
+          variant="underlined"
+          placeholder="Apellidos"
+          borderColor={"black"}
+          placeholderTextColor="black"
+          value={apellidos}
+          onChangeText={setApellidos}
+          style={styles.input}
+          _focus={{ borderColor: 'black' }}
+          _hover={{ borderColor: 'black' }}
+          color="black"
+        />
+        <Input
+          variant="underlined"
+          placeholder="Nombre de usuario"
+          borderColor={"black"}
+          placeholderTextColor="black"
+          value={userName}
+          onChangeText={setUserName}
+          style={styles.input}
+          _focus={{ borderColor: 'black' }}
+          _hover={{ borderColor: 'black' }}
+          color="black"
+        />
+        <Input
+          variant="underlined"
+          placeholder="Teléfono"
+          borderColor={"black"}
+          placeholderTextColor="black"
+          value={tel}
+          onChangeText={setTel}
+          style={styles.input}
+          _focus={{ borderColor: 'black' }}
+          _hover={{ borderColor: 'black' }}
+          color="black"
+        />
+        <View style={styles.dateContainer}>
+          <Input
+            variant="underlined"
+            borderColor={"black"}
+            placeholder="Fecha de Nacimiento"
+            placeholderTextColor="black"
+            value={fechaNacimiento.toLocaleDateString()}
+            onFocus={() => setShowDatePicker(true)}
+            style={styles.input}
+            _focus={{ borderColor: 'black' }}
+            _hover={{ borderColor: 'black' }}
+            color="black"
+            readOnly
+          />
+          {showDatePicker && (
+            <DateTimePicker
+              value={fechaNacimiento}
+              mode="date"
+              display="default"
+              onChange={handleDateChange}
+            />
+          )}
+        </View>
+        <Input
+          variant="underlined"
+          placeholder="Género"
+          borderColor={"black"}
+          placeholderTextColor="black"
+          value={genero}
+          onChangeText={setGenero}
+          style={styles.input}
+          _focus={{ borderColor: 'black' }}
+          _hover={{ borderColor: 'black' }}
+          color="black"
+        />
+        <Input
+          variant="underlined"
+          borderColor={"black"}
+          placeholder="Correo electrónico"
+          placeholderTextColor="black"
+          value={correo}
+          onChangeText={setCorreo}
+          style={styles.input}
+          _focus={{ borderColor: 'black' }}
+          _hover={{ borderColor: 'black' }}
+          color="black"
+        />
+        <Input
+          variant="underlined"
+          borderColor={"black"}
+          placeholder="Contraseña"
+          placeholderTextColor="black"
+          secureTextEntry
+          value={password}
+          onChangeText={setPassword}
+          style={styles.input}
+          _focus={{ borderColor: 'black' }}
+          _hover={{ borderColor: 'black' }}
+          color="black"
+        />
+        <Button
+          variant="solid"
+          onPress={handleRegisterPress}
+          style={styles.button}
+        >
+          Registrarse
+        </Button>
+      </Stack>
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: 'skyblue',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  input: {
+    width: '80%',
+    borderColor:"black"
+     
+    
+  },
+  dateContainer: {
+    marginBottom: 10,
+  },
+  button: {
+    width: '80%',
+    marginTop: 10,
+    backgroundColor: '#1877F2',
+  },
+});
+
+export default RegisterScreen;
+--------------------------------------------------------------------------------------------------------------------------------

@@ -20,7 +20,7 @@ const LoginScreen = () => {
   const handleLoginPress = async () => {
     try {
       const response = await axios.post(configs.url + '/auth', { userName, password });
-
+  
       if (response.data.isLoggedIn) {
         console.log('response de login');
         console.log(response.data);

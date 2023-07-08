@@ -18,7 +18,7 @@ const InicioScreen = () => {
         console.log(token);
 
         if (token) {
-          await delay(4000);
+          await delay(3000);
           try {
             const response = await axios.get(configs.url + '/auth', {
               headers: {

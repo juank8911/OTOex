@@ -3,11 +3,14 @@ import { View, Text, Button, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const PrincipalScreen = () => {
+const PrincipalScreen = ({ loggedIn }) => {
   const navigation = useNavigation();
 
   useEffect(() => {
     console.log('principal screen');
+    if (!loggedIn) {
+      navigation.navigate('Login');
+    }
   }, []);
 
   const handleLogout = async () => {

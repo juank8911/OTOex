@@ -1,128 +1,160 @@
-import React, { useEffect, useRef } from 'react';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { createDrawerNavigator, DrawerContentScrollView, DrawerItem } from '@react-navigation/drawer';
+import React, { useEffect, useRef, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
-import { NativeBaseProvider, Box, Text, VStack, Pressable } from 'native-base';
+import { createStackNavigator } from '@react-navigation/stack';
+import { createDrawerNavigator } from '@react-navigation/drawer';
+import { DrawerContentScrollView } from '@react-navigation/drawer';
+import {
+  NativeBaseProvider,
+  Box,
+  Text,
+  IconButton,
+  VStack,
+  Pressable,
+  HStack,
+  Icon,
+  Divider,
+  Center,
+  Avatar,
+} from 'native-base';
+import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { MaterialIcons } from '@expo/vector-icons';
-
+import { AppState } from 'react-native';
+import InicioScreen from './screens/InicioScreen';
 import LoginScreen from './screens/LoginScreen';
-import RegisterScreen from './screens/RegisterScreen';
 import PrincipalScreen from './screens/PrincipalScreen';
+import RegisterScreen from './screens/RegisterScreen';
 
-const Stack = createNativeStackNavigator();
+import configs from './configs';
+import MenuComponent from './components/MenuComponent';
+
+const Stack = createStackNavigator();
 const Drawer = createDrawerNavigator();
 
-const CustomDrawerContent = ({ navigation }) => {
-  const handleLogout = async () => {
+const App = () => {
+  const navigationRef = useRef();
+  const [loggedIn, setLoggedIn] = useState(false);
+  const [usuario, setUsuario] = useState();
+  const [isLoading, setIsLoading] = useState(true);
+  const appStateSubscription = useRef();
+
+  const handleLogout = async (navigation) => {
     try {
       await AsyncStorage.removeItem('token');
       navigation.navigate('Login');
     } catch (error) {
-      console.log(error);
+      console.error('Error al cerrar sesión:', error);
     }
   };
 
-  return (
-    <DrawerContentScrollView>
-      <VStack space={4} alignItems="flex-start" p={4}>
-        <Pressable onPress={() => navigation.navigate('Principal')}>
-          <Text fontSize="xl" fontWeight="bold">
-            Principal
-          </Text>
-        </Pressable>
-        <Pressable onPress={handleLogout}>
-          <Text fontSize="xl" fontWeight="bold">
-            Cerrar sesión
-          </Text>
-        </Pressable>
-      </VStack>
-    </DrawerContentScrollView>
-  );
-};
-
-const App = () => {
-  const isMountedRef = useRef(false);
-
   useEffect(() => {
-    isMountedRef.current = true;
-    return () => (isMountedRef.current = false);
-  }, []);
+    const checkLogin = async () => {
+      const token = await AsyncStorage.getItem('token');
 
-  useEffect(() => {
-    const checkToken = async () => {
-      try {
-        const token = await AsyncStorage.getItem('token');
-        if (token) {
-          isMountedRef.current && navigateToPrincipal();
-        } else {
-          isMountedRef.current && navigateToLogin();
+      if (token) {
+        try {
+          const response = await fetch(configs.url + '/auth', {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+          });
+          const responseData = await response.json();
+
+          if (responseData.isloggedIn) {
+            const tk = token;
+
+            await fetch(`http://192.168.20.3:3000/usuario/tok/${tk}`, {
+              method: 'GET',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+              },
+            })
+              .then((response) => response.json())
+              .then((data) => {
+                console.log('RESPONSE');
+                console.log(data);
+                console.log('-----------------');
+                const usuario = data;
+                setUsuario(usuario);
+              })
+              .catch((err) => {
+                console.log('error en checking usuario');
+                console.log(err);
+              });
+            setLoggedIn(true);
+          } else {
+            navigationRef.current?.navigate('Login');
+          }
+        } catch (error) {
+          console.log('Error al verificar el login:', error);
+          navigationRef.current?.navigate('Login');
         }
-      } catch (error) {
-        console.log(error);
+      } else {
+        navigationRef.current?.navigate('Login');
       }
+
+      setIsLoading(false);
     };
 
-    checkToken();
+    const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+    const loadApp = async () => {
+      await delay(3000);
+      checkLogin();
+    };
+
+    loadApp();
+
+    appStateSubscription.current = AppState.addEventListener('change', checkLogin);
+
+    return () => {
+      appStateSubscription.current && appStateSubscription.current.remove();
+    };
   }, []);
 
-  const navigateToPrincipal = () => {
-    const navigation = isMountedRef.current ? navigationRef.current : null;
-    navigation && navigation.navigate('Principal');
-  };
-
-  const navigateToLogin = () => {
-    const navigation = isMountedRef.current ? navigationRef.current : null;
-    navigation && navigation.navigate('Login');
-  };
-
-  const navigationRef = useRef();
-
   return (
-    <NavigationContainer
-      ref={navigationRef}
-      onReady={() => (isMountedRef.current = true)}
-      onStateChange={() => {}}
-    >
-      <NativeBaseProvider>
-        <Stack.Navigator>
-          <Stack.Screen
-            name="Login"
-            component={LoginScreen}
-            options={{ headerShown: false }}
-          />
-          <Stack.Screen
-            name="Register"
-            component={RegisterScreen}
-            options={{ title: 'Registro' }}
-          />
-          <Stack.Screen
-            name="Principal"
-            component={DrawerNavigator}
-            options={{ headerShown: false }}
-          />
-        </Stack.Navigator>
-      </NativeBaseProvider>
-    </NavigationContainer>
+    <NativeBaseProvider>
+      <NavigationContainer ref={navigationRef}>
+        {isLoading ? (
+          <InicioScreen />
+        ) : (
+          <Stack.Navigator>
+            <Stack.Screen name="Drawer" options={{ headerShown: false }}>
+              {(props) => (
+                <DrawerNavigatorContainer
+                  {...props}
+                  loggedIn={loggedIn}
+                  handleLogout={handleLogout}
+                  usuario={usuario}
+                />
+              )}
+            </Stack.Screen>
+          </Stack.Navigator>
+        )}
+      </NavigationContainer>
+    </NativeBaseProvider>
   );
 };
 
-const DrawerNavigator = () => {
+const DrawerNavigatorContainer = ({ loggedIn, handleLogout, usuario }) => {
   return (
     <Drawer.Navigator
-      initialRouteName="Principal"
-      screenOptions={{ headerShown: false }}
-      drawerContent={(props) => <CustomDrawerContent {...props} />}
+      initialRouteName={loggedIn ? 'Principal' : 'Login'}
+      drawerContent={(props) => (
+        <MenuComponent {...props} handleLogout={handleLogout} usuario={usuario} />
+      )}
     >
-      <Drawer.Screen
-        name="Principal"
-        component={PrincipalScreen}
-        options={{
-          drawerIcon: ({ color }) => (
-            <MaterialIcons name="home" size={24} color={color} />
-          ),
-        }}
-      />
+      <Drawer.Screen name="Principal">
+        {(props) => <PrincipalScreen {...props} loggedIn={loggedIn} />}
+      </Drawer.Screen>
+      <Drawer.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
+      <Drawer.Screen name="Registro" component={RegisterScreen} options={{ headerShown: true }} />
+      <Drawer.Screen name="Favorites" component={RegisterScreen} options={{ headerShown: true }} />
+      <Drawer.Screen name="Archive" component={RegisterScreen} options={{ headerShown: true }} />
+      <Drawer.Screen name="Trash" component={RegisterScreen} options={{ headerShown: true }} />
+      <Drawer.Screen name="Spam" component={PrincipalScreen} options={{ headerShown: true }} />
     </Drawer.Navigator>
   );
 };
